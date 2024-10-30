@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -15,34 +16,41 @@ type PendingTransaction struct {
 	DepositAmount int
 }
 
+// generate data of transactions to be processed
 func generatePendingTransactions(numOfTransaction int) []*PendingTransaction {
 	result := []*PendingTransaction{}
 	totalExpectedDeposit := 0
 
-	fmt.Printf("=== Generating %v Pending Deposit Transactions ===\n", numOfTransaction)
-	for i := range numOfTransaction {
+	for range numOfTransaction {
 		pendingTransaction := &PendingTransaction{
-			Id:            i + 1,
 			DepositAmount: rand.Intn(10) + 1,
 		}
 		totalExpectedDeposit += pendingTransaction.DepositAmount
 		result = append(result, pendingTransaction)
 	}
 
-	fmt.Printf("---> It is expected that a total amount of %v is added to the balance!\n", totalExpectedDeposit)
+	fmt.Printf("---> It is expected that a total amount of %v is added to the balance!\n\n", totalExpectedDeposit)
 	return result
 }
 
+// process transaction data, this function will be passed into concurrency
 func (b *Balance) processPendingTransaction(
 	mutex *sync.Mutex,
 	wg *sync.WaitGroup,
+	useMutex bool,
 	pendingTransaction *PendingTransaction,
 ) {
-	defer wg.Done()
+	defer wg.Done() // decrement work group count when the function is done
 
-	mutex.Lock()
+	if useMutex {
+		// lock b.Total resource
+		// other process cannot access unless it is unlocked
+		mutex.Lock()
+	}
 	b.Total += pendingTransaction.DepositAmount
-	mutex.Unlock()
+	if useMutex {
+		mutex.Unlock()
+	}
 }
 
 func (b *Balance) PrinceTotalBalance() {
@@ -51,31 +59,38 @@ func (b *Balance) PrinceTotalBalance() {
 
 func main() {
 	var (
-		wg       sync.WaitGroup
-		mutex    sync.Mutex
-		useMutex bool
-
-		numOfTransaction = 1000
+		wg    sync.WaitGroup
+		mutex sync.Mutex
 	)
-	wg.Add(numOfTransaction)
+
+	useMutex := flag.Bool("mutex", false, "enable mutex")
+	flag.Parse()
 
 	myBalance := &Balance{Total: 0}
-	myBalance.PrinceTotalBalance()
 
 	fmt.Println("=== Virtual Banking Deposit System ===")
-	if useMutex {
-		fmt.Println("NOTICE: MUTEX IS USED")
+	if *useMutex {
+		fmt.Println("NOTICE: MUTEX IS USED!")
 	} else {
 		fmt.Println("NOTICE: MUTEX IS NOT USED!")
 	}
 
-	pendingDepositTransactions := generatePendingTransactions(numOfTransaction)
-	fmt.Println("=== Start Processing Pending Transactions ===", "\n...\n...")
+	fmt.Println()
+	myBalance.PrinceTotalBalance()
 
+	numOfTransaction := 1000
+	fmt.Printf("=== Generating %v Pending Deposit Transactions ===\n", numOfTransaction)
+	pendingDepositTransactions := generatePendingTransactions(numOfTransaction)
+
+	fmt.Println("=== Start Processing All Pending Transactions With Go Concurrency ===", "\n...\n...")
+
+	wg.Add(numOfTransaction) // assign wait group to equal amount of the transaction
 	for _, e := range pendingDepositTransactions {
-		go myBalance.processPendingTransaction(&mutex, &wg, e)
+		// start a new GoRoutine
+		go myBalance.processPendingTransaction(&mutex, &wg, *useMutex, e)
 	}
-	wg.Wait()
+
+	wg.Wait() // wait until the number of work group is decremented to 0
 	fmt.Printf("=== All Pending %v Transactions Are Processed ===\n",
 		len(pendingDepositTransactions))
 
