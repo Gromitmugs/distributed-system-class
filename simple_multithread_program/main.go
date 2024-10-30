@@ -27,9 +27,6 @@ func generatePendingTransactions(numOfTransaction int) []*PendingTransaction {
 		}
 		totalExpectedDeposit += pendingTransaction.DepositAmount
 		result = append(result, pendingTransaction)
-
-		// fmt.Printf("Transaction Id.%v, Amount To Deposit: %v \n",
-		// 	pendingTransaction.Id, pendingTransaction.DepositAmount)
 	}
 
 	fmt.Printf("---> It is expected that a total amount of %v is added to the balance!\n", totalExpectedDeposit)
@@ -46,9 +43,6 @@ func (b *Balance) processPendingTransaction(
 	mutex.Lock()
 	b.Total += pendingTransaction.DepositAmount
 	mutex.Unlock()
-
-	// fmt.Printf("Transaction Id. %v Completed: %v added to the balance!\n",
-	// 	pendingTransaction.Id, pendingTransaction.DepositAmount)
 }
 
 func (b *Balance) PrinceTotalBalance() {
