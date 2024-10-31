@@ -8,11 +8,10 @@ import (
 )
 
 type Balance struct {
-	Total int
+	TotalAmount int
 }
 
 type PendingTransaction struct {
-	Id            int
 	DepositAmount int
 }
 
@@ -47,14 +46,14 @@ func (b *Balance) processPendingTransaction(
 		// other process cannot access unless it is unlocked
 		mutex.Lock()
 	}
-	b.Total += pendingTransaction.DepositAmount
+	b.TotalAmount += pendingTransaction.DepositAmount
 	if useMutex {
 		mutex.Unlock()
 	}
 }
 
 func (b *Balance) PrinceTotalBalance() {
-	fmt.Printf("---> The current total balance is %v \n", b.Total)
+	fmt.Printf("---> The current total balance is %v \n", b.TotalAmount)
 }
 
 func main() {
@@ -66,7 +65,8 @@ func main() {
 	useMutex := flag.Bool("mutex", false, "enable mutex")
 	flag.Parse()
 
-	myBalance := &Balance{Total: 0}
+	// starting with 0 money in myBalance
+	myBalance := &Balance{TotalAmount: 0}
 
 	fmt.Println("=== Virtual Banking Deposit System ===")
 	if *useMutex {
